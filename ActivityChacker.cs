@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -9,9 +8,9 @@ namespace ClaymoreWatchDog
 {
     class ActivityChacker
     {
-        private int _delaySec;
+        private readonly int _delaySec;
         private bool _processing;
-        private DirectoryInfo _minerDir;
+        private readonly DirectoryInfo _minerDir;
 
         public ActivityChacker(int delaySec, string dir)
         {
@@ -36,15 +35,27 @@ namespace ClaymoreWatchDog
             {
                 if (GetLastLogFile().LastWriteTime.ToBinary() < DateTime.Now.AddMinutes(-1).ToBinary())
                 {
-                    Console.WriteLine(GetLastLogFile().LastAccessTime + " " + DateTime.Now.AddMinutes(-1));
+                    Console.WriteLine(GetLastLogFile().LastAccessTime + " " + DateTime.Now);
                     //TODO: Send email notification
                     //TODO: Reboot OS
-                    string command = Path.Combine(_minerDir.FullName, "start — DwarfpoolETH.bat");
 
                     try
                     {
+                        var process = System.Diagnostics.Process.GetProcessesByName("EthDcrMiner64").FirstOrDefault();
+                        if (process != null)
+                        {
+                            try
+                            {
+                                process.Kill();
+                                process.WaitForExit();
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine("Exception while trying to stop miner :{0},{1}", ex.Message, ex.StackTrace);    
+                            }
+                        }
                         string targetDir = string.Format(_minerDir.FullName);
-                        var proc = new Process
+                        process = new Process
                         {
                             StartInfo =
                             {
@@ -53,11 +64,12 @@ namespace ClaymoreWatchDog
                                 CreateNoWindow = false
                             }
                         };
-                        proc.Start();
+                        
+                        process.Start();
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine("Exception Occurred :{0},{1}", ex.Message, ex.StackTrace.ToString());
+                        Console.WriteLine("Exception Occurred :{0},{1}", ex.Message, ex.StackTrace);
                     }
                 }
                 else
